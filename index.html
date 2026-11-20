@@ -90,7 +90,7 @@
       ctx.fillStyle = "#f59e0b";
       for (let i = 0; i < 7; i++) ctx.fillRect(65 + i * 10, 66, 5, 60);
 
-      const m = { name: "Jeep Värmare", short_name: "Jeep", start_url: location.href, display: "standalone", background_color: "#121212", theme_color: "#121212", icons: [{ src: c.toDataURL("image/png"), sizes: "192x192", type: "image/png" }] };
+      const m = { name: "Jeep Värmare", short_name: "Jeep", start_url: location.href, scope: location.pathname, display: "standalone", background_color: "#121212", theme_color: "#121212", icons: [{ src: c.toDataURL("image/png"), sizes: "192x192", type: "image/png" }] };
       document.getElementById("manifestLink").href = URL.createObjectURL(new Blob([JSON.stringify(m)], { type: "application/json" }));
     })();
 
@@ -150,7 +150,7 @@
     function stallaTimer(nr) { const t = document.getElementById("timer" + nr + "Input").value; if (t) skicka("TIMER" + nr + " " + t); }
     function bekraftaWifi() { if (confirm("Starta om bilen till JEEP-Setup?")) skicka("WIFI"); }
 
-    if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js");
     startaAnslutning();
   </script>
 </body>

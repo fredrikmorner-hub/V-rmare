@@ -90,21 +90,52 @@
       ctx.fillStyle = "#f59e0b";
       for (let i = 0; i < 7; i++) ctx.fillRect(65 + i * 10, 66, 5, 60);
 
-      const m = { name: "Jeep Värmare", short_name: "Jeep", start_url: location.href, scope: location.pathname, display: "standalone", background_color: "#121212", theme_color: "#121212", icons: [{ src: c.toDataURL("image/png"), sizes: "192x192", type: "image/png" }] };
-      document.getElementById("manifestLink").href = URL.createObjectURL(new Blob([JSON.stringify(m)], { type: "application/json" }));
+      const m = {
+        name: "Jeep Värmare",
+        short_name: "Jeep",
+        start_url: location.href,
+        scope: location.pathname,
+        display: "standalone",
+        background_color: "#121212",
+        theme_color: "#121212",
+        icons: Array.of({ src: c.toDataURL("image/png"), sizes: "192x192", type: "image/png" })
+      };
+      document.getElementById("manifestLink").href = URL.createObjectURL(new Blob(Array.of(JSON.stringify(m)), { type: "application/json" }));
     })();
 
     let deferredPrompt;
-    window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); deferredPrompt = e; document.getElementById("installBtn").style.display = "block"; });
-    async function installeraApp() { if (!deferredPrompt) return; deferredPrompt.prompt(); if ((await deferredPrompt.userChoice).outcome === "accepted") document.getElementById("installBtn").style.display = "none"; deferredPrompt = null; }
+    window.addEventListener("beforeinstallprompt", e => {
+      e.preventDefault();
+      deferredPrompt = e;
+      document.getElementById("installBtn").style.display = "block";
+    });
+    async function installeraApp() {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      if ((await deferredPrompt.userChoice).outcome === "accepted") document.getElementById("installBtn").style.display = "none";
+      deferredPrompt = null;
+    }
 
     const brokerUrl = "wss://broker.emqx.io:8084/mqtt", topicCmd = "min_esp32/JEEP/cmd", topicStatus = "min_esp32/JEEP/status";
     const statusBadge = document.getElementById("connStatus"), statusLog = document.getElementById("statusLog");
     let ws = null, arAnsluten = false, pingTimer = null;
 
-    function logga(text, farg = "#34d399") { statusLog.innerHTML = `<span style="color:${farg}">${text.replace(/Klocka:\s*\d{2}:\d{2}\s*\|\s*/g, "")}</span>`; }
-    function encodeStr(s) { const b = new TextEncoder().encode(s); return [b.length >> 8, b.length & 0xff, ...b]; }
-    function encodeLen(l) { const o = []; do { let d = l % 128; l = Math.floor(l / 128); if (l > 0) d |= 128; o.push(d); } while (l > 0); return o; }
+    function logga(text, farg = "#34d399") {
+      statusLog.innerHTML = `<span style="color:${farg}">${text.replace(/Klocka:\s*\d{2}:\d{2}\s*\|\s*/g, "")}</span>`;
+    }
+    function encodeStr(s) {
+      const b = new TextEncoder().encode(s);
+      return Array.of(b.length >> 8, b.length & 0xff, ...b);
+    }
+    function encodeLen(l) {
+      const o = Array.of();
+      do {
+        let d = l % 128; l = Math.floor(l / 128);
+        if (l > 0) d |= 128;
+        o.push(d);
+      } while (l > 0);
+      return o;
+    }
 
     function startaAnslutning() {
       statusBadge.textContent = "Ansluter..."; statusBadge.classList.remove("online");
@@ -113,8 +144,8 @@
 
       ws.onopen = () => {
         const p = encodeStr("JeepWeb-" + Math.random().toString(16).substr(2, 8));
-        const h =;
-        ws.send(new Uint8Array([0x10, ...encodeLen(h.length + p.length), ...h, ...p]));
+        const h = Array.of(0, 4, 77, 81, 84, 84, 4, 2, 0, 60);
+        ws.send(new Uint8Array(Array.of(0x10, ...encodeLen(h.length + p.length), ...h, ...p)));
       };
 
       ws.onmessage = e => {
@@ -122,10 +153,12 @@
         if (pt === 2 && d.at(3) === 0) {
           arAnsluten = true; statusBadge.textContent = "Moln Online"; statusBadge.classList.add("online");
           logga("Ansluten! Hämtar status...", "#60a5fa");
-          const sub = [0, 1, ...encodeStr(topicStatus), 0];
-          ws.send(new Uint8Array([0x82, ...encodeLen(sub.length), ...sub]));
+          const sub = Array.of(0, 1, ...encodeStr(topicStatus), 0);
+          ws.send(new Uint8Array(Array.of(0x82, ...encodeLen(sub.length), ...sub)));
           clearInterval(pingTimer);
-          pingTimer = setInterval(() => { if (ws && ws.readyState === 1) ws.send(new Uint8Array([0xc0, 0])); }, 25000);
+          pingTimer = setInterval(() => {
+            if (ws && ws.readyState === 1) ws.send(new Uint8Array(Array.of(0xc0, 0)));
+          }, 25000);
           setTimeout(() => skicka("STATUS"), 300);
         } else if (pt === 3) {
           let i = 1, m = 1, b; do { b = d.at(i++); m *= 128; } while ((b & 128) !== 0);
@@ -137,13 +170,17 @@
       };
 
       ws.onerror = () => logga("Nätverksfel: Port 8084 blockerad.", "#ef4444");
-      ws.onclose = () => { arAnsluten = false; clearInterval(pingTimer); statusBadge.textContent = "Frånkopplad"; statusBadge.classList.remove("online"); setTimeout(startaAnslutning, 3000); };
+      ws.onclose = () => {
+        arAnsluten = false; clearInterval(pingTimer);
+        statusBadge.textContent = "Frånkopplad"; statusBadge.classList.remove("online");
+        setTimeout(startaAnslutning, 3000);
+      };
     }
 
     function skicka(k) {
       if (!arAnsluten || !ws || ws.readyState !== 1) return alert("Inte ansluten ännu.");
       const tb = encodeStr(topicCmd), mb = new TextEncoder().encode(k);
-      ws.send(new Uint8Array([0x30, ...encodeLen(tb.length + mb.length), ...tb, ...mb]));
+      ws.send(new Uint8Array(Array.of(0x30, ...encodeLen(tb.length + mb.length), ...tb, ...mb)));
       logga("Skickade '" + k + "'...", "#f59e0b");
     }
 
